@@ -9,24 +9,38 @@ from pynput.keyboard import Key, Listener
 port = 1128
 
 # set Rasperry Pi IP
-RP_IP = '127.0.0.1'
-
+RP_IP = '10.251.41.217'
 
 def run_client():
     print("Creating socket...")
     sock = socket.socket()
     print("Socket created...")
 
-    print("Connecting to Rasperry Pi Server...")
+    print("Connecting to Rasperry Pi Server at %s:%d.." % (RP_IP, port))
     sock.connect((RP_IP, port))
     print("Connected to %s:%d..." % (RP_IP, port))
 
     # setup keyboard input
     keyboard = Listener()
 
+    def process_key(key, release = False):
+        try:
+            cmd = ('.' + str(key).split('.')[1]).encode('utf-8')
+            return cmd
+        except:
+            print("Invalid command...")
+            return None
+
+    def on_press(key):
+        """ On key press process cmd and send if valid """
+        cmd = process_key(key)
+        if cmd:
+            print("Sending %s...", str(cmd))
+            sock.send(cmd)
+
     # continue to take user input till interrupt
     # on key input, send over socket
-    with Listener(on_press=sock.send, on_release=None) as listener:
+    with Listener(on_press=on_press, on_release=None) as listener:
         listener.join()
 
 
