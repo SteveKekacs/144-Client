@@ -6,19 +6,19 @@ import socket
 from pynput.keyboard import Key, Listener
 
 # set port to connect to
-port = 1130
+PORT = 1130
 
 # set Rasperry Pi IP
-RP_IP = '10.251.41.217'
+RP_IP = '10.251.45.1'
 
 def run_client():
     print("Creating socket...")
     sock = socket.socket()
     print("Socket created...")
 
-    print("Connecting to Rasperry Pi Server at %s:%d.." % (RP_IP, port))
-    sock.connect((RP_IP, port))
-    print("Connected to %s:%d..." % (RP_IP, port))
+    print("Connecting to Rasperry Pi Server at %s:%d.." % (RP_IP, PORT))
+    sock.connect((RP_IP, PORT))
+    print("Connected to %s:%d..." % (RP_IP, PORT))
 
     # setup keyboard input
     keyboard = Listener()
