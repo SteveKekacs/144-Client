@@ -12,6 +12,10 @@ import socket
 HOST=''
 PORT=8089
 
+# size of packets to receive
+PACKET_SZ = 130748 * 2
+
+
 def receive_video():
     print("Creating socket...")
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -29,13 +33,14 @@ def receive_video():
     data = b''
 
     # size of struct L
-    payload_size = struct.calcsize("L")
+    payload_size = struct.calcsize("<L")
+    print(payload_size)
 
     # continue to receive video till interrupt
     while True:
         # receive data till payload size reached
         while len(data) < payload_size:
-            data += conn.recv(4096)
+            data += conn.recv(PACKET_SZ)
 
         # get payload size from data
         packed_msg_size = data[:payload_size]
@@ -44,11 +49,11 @@ def receive_video():
         data = data[payload_size:]
 
         # get message size
-        msg_size = struct.unpack("L", packed_msg_size)[0]
+        msg_size = struct.unpack("<L", packed_msg_size)[0]
 
         # ceive data till message size met
         while len(data) < msg_size:
-            data += conn.recv(4096)
+            data += conn.recv(PACKET_SZ)
 
         # get frame data
         frame_data = data[:msg_size]
@@ -58,6 +63,8 @@ def receive_video():
 
         # convert to cv2 frame
         frame=pickle.loads(frame_data)
+
+        frame = cv2.flip(frame, 1)
 
         # show frame
         cv2.imshow('frame',frame)
