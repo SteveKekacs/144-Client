@@ -8,12 +8,19 @@ import pickle
 import numpy as np
 import struct
 import socket
+import random
 
 HOST_IP=''
+SENDING_HOST_IP=''
 PORT=8089
 
 # size of packets to receive
 PACKET_SZ = 130748 * 2
+
+
+def detect_stop_sign(frame):
+    # temp
+    return random.randint(0, 100) == 50 
 
 
 def receive_video(protocol):
@@ -33,13 +40,26 @@ def receive_video(protocol):
 
     # if TCP listen and accept connection
     conn = None
+    sock_send = None
     if protocol == 'TCP':
         sock.listen(10)
         print("Socket is listening...")
 
         conn, (_, addr) = sock.accept()
         print("Established connection with %s..." % addr)
+    else:
+        print("Creating socket for sending stop command...")
+        while sock_send is None:
+            # try to connect to socket, if not ready sleep and try again
+            try:
+                sock_send = socket.socket(socket.AF_INET, socket_type)
+            except:
+                time.sleep(1)
+        print("Socket for sending stop command created...")
 
+        print("Connecting sending socket to %s:%d..." % (SENDING_HOST_IP, VIDEO_PORT))
+        sock_send.connect((SENDING_HOST_IP, VIDEO_PORT))
+        print("Connected sending socket to %s:%d..." % (SENDING_HOST_IP, VIDEO_PORT))
 
     # variable to hold data sent from Pi
     data = b''
@@ -84,11 +104,15 @@ def receive_video(protocol):
         cv2.imshow('frame',frame)
 
         # TODO: Process objects, if found send stop command back to Pi
-        # if stop_sign_detected(frame):
-        #     send_command('stop')
+        if detect_stop_sign(frame):
+            if protocol == 'TCP':
+                sock.send('stop'.encode('utf-8'))
+            else:
+                send_sock.send('stop'.encode('utf-8'))
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
+
 
 if __name__ == '__main__':
     protcol = 'TCP'
