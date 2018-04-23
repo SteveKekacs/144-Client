@@ -6,7 +6,7 @@ import socket
 from pynput.keyboard import Key, Listener
 
 # set port to connect to
-PORT = 1199
+PORT = 1198
 
 # set Rasperry Pi IP
 RP_IP = '10.251.45.1'

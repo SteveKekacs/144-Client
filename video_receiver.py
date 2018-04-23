@@ -9,10 +9,12 @@ import numpy as np
 import struct
 import socket
 import random
+import time 
 
 HOST_IP=''
-SENDING_HOST_IP=''
-PORT=8089
+SENDING_HOST_IP='10.251.45.1'
+VIDEO_PORT=8088
+COMMAND_PORT=8989
 
 # size of packets to receive
 PACKET_SZ = 130748 * 2
@@ -20,7 +22,10 @@ PACKET_SZ = 130748 * 2
 
 def detect_stop_sign(frame):
     # temp
-    return random.randint(0, 100) == 50 
+    ret = random.randint(0, 100) == 50
+    if ret:
+        print("STOP!")
+    return ret
 
 
 def receive_video(protocol):
@@ -35,8 +40,8 @@ def receive_video(protocol):
     print("%s Socket created..." % protocol)
 
     # bind to host
-    print("Binding to port %d..." % PORT)
-    sock.bind((HOST_IP, PORT))
+    print("Binding to port %d..." % VIDEO_PORT)
+    sock.bind((HOST_IP, VIDEO_PORT))
 
     # if TCP listen and accept connection
     conn = None
@@ -47,19 +52,23 @@ def receive_video(protocol):
 
         conn, (_, addr) = sock.accept()
         print("Established connection with %s..." % addr)
-    else:
-        print("Creating socket for sending stop command...")
-        while sock_send is None:
-            # try to connect to socket, if not ready sleep and try again
-            try:
-                sock_send = socket.socket(socket.AF_INET, socket_type)
-            except:
-                time.sleep(1)
-        print("Socket for sending stop command created...")
 
-        print("Connecting sending socket to %s:%d..." % (SENDING_HOST_IP, VIDEO_PORT))
-        sock_send.connect((SENDING_HOST_IP, VIDEO_PORT))
-        print("Connected sending socket to %s:%d..." % (SENDING_HOST_IP, VIDEO_PORT))
+    time.sleep(2)
+    print("\n\nCreating socket for sending stop command...")
+    sock_send = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    print("Socket for sending stop command created...")
+
+    print("Connecting sending socket to %s:%d..." % (SENDING_HOST_IP, COMMAND_PORT))
+    connected = False
+    while not connected:
+        # try to connect to socket, if not ready sleep and try again
+        try:
+            print("trying")
+            sock_send.connect((SENDING_HOST_IP, COMMAND_PORT))
+            connected = True    
+        except:
+            time.sleep(1)
+    print("Connected sending socket to %s:%d..\n\n." % (SENDING_HOST_IP, COMMAND_PORT))
 
     # variable to hold data sent from Pi
     data = b''
@@ -105,22 +114,17 @@ def receive_video(protocol):
 
         # TODO: Process objects, if found send stop command back to Pi
         if detect_stop_sign(frame):
-            if protocol == 'TCP':
-                sock.send('stop'.encode('utf-8'))
-            else:
-                send_sock.send('stop'.encode('utf-8'))
+            send_sock.send('stop'.encode('utf-8'))
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
 
 if __name__ == '__main__':
-    protcol = 'TCP'
-    if sys.argv and sys.argv[0] in ['tcp', 'udp', 'rdp']:
-        protocol = sys.argv[0].upper()
+    if len(sys.argv) == 2 and sys.argv[1] in ['tcp', 'udp', 'rdp']:
+        protocol = sys.argv[1].upper()
+        receive_video(protocol)
     else:
         print("Error: Invalid argument")
-        return 
 
-    receive_video(protocol)
 
