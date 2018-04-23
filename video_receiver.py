@@ -9,25 +9,37 @@ import numpy as np
 import struct
 import socket
 
-HOST=''
+HOST_IP=''
 PORT=8089
 
 # size of packets to receive
 PACKET_SZ = 130748 * 2
 
 
-def receive_video():
-    print("Creating socket...")
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    print("Socket created...")
+def receive_video(protocol):
+    # create socket
+    # get socket type based on protocol
+    socket_type = socket.SOCK_STREAM
+    if protocol == 'UDP':
+        socket_type = socket.SOCK_DGRAM
 
+    print("Creating %s socket..." % protocol)
+    sock = socket.socket(socket.AF_INET, socket_type)
+    print("%s Socket created..." % protocol)
+
+    # bind to host
     print("Binding to port %d..." % PORT)
-    sock.bind((HOST,PORT))
-    sock.listen(10)
-    print("Socket is listening...")
+    sock.bind((HOST_IP, PORT))
 
-    conn, (_, addr) = sock.accept()
-    print("Established connection with %s..." % addr)
+    # if TCP listen and accept connection
+    conn = None
+    if protocol == 'TCP':
+        sock.listen(10)
+        print("Socket is listening...")
+
+        conn, (_, addr) = sock.accept()
+        print("Established connection with %s..." % addr)
+
 
     # variable to hold data sent from Pi
     data = b''
@@ -53,7 +65,11 @@ def receive_video():
 
         # ceive data till message size met
         while len(data) < msg_size:
-            data += conn.recv(PACKET_SZ)
+            if protocol == 'TCP':
+                data += conn.recv(PACKET_SZ)
+            else:
+                packet_data, addr = sock.recvfrom(PACKET_SZ)
+                data += packed_data
 
         # get frame data
         frame_data = data[:msg_size]
@@ -62,18 +78,25 @@ def receive_video():
         data = data[msg_size:]
 
         # convert to cv2 frame
-        frame=pickle.loads(frame_data)
-
-        frame = cv2.flip(frame, 1)
+        frame = pickle.loads(frame_data)
 
         # show frame
         cv2.imshow('frame',frame)
 
         # TODO: Process objects, if found send stop command back to Pi
+        # if stop_sign_detected(frame):
+        #     send_command('stop')
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
 if __name__ == '__main__':
-    receive_video()
+    protcol = 'TCP'
+    if sys.argv and sys.argv[0] in ['tcp', 'udp', 'rdp']:
+        protocol = sys.argv[0].upper()
+    else:
+        print("Error: Invalid argument")
+        return 
+
+    receive_video(protocol)
 
