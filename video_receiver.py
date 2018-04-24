@@ -9,7 +9,7 @@ import numpy as np
 import struct
 import socket
 import random
-import time 
+import time
 
 HOST_IP=''
 SENDING_HOST_IP='10.251.45.1'
@@ -22,7 +22,7 @@ PACKET_SZ = 130748 * 2
 
 def detect_stop_sign(frame):
     # temp
-    ret = random.randint(0, 100) == 50
+    ret = random.randint(0, 50) == 10
     if ret:
         print("STOP!")
     return ret
@@ -45,7 +45,6 @@ def receive_video(protocol):
 
     # if TCP listen and accept connection
     conn = None
-    sock_send = None
     if protocol == 'TCP':
         sock.listen(10)
         print("Socket is listening...")
@@ -53,10 +52,11 @@ def receive_video(protocol):
         conn, (_, addr) = sock.accept()
         print("Established connection with %s..." % addr)
 
-    time.sleep(2)
-    print("\n\nCreating socket for sending stop command...")
-    sock_send = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    print("Socket for sending stop command created...")
+    # sleep then establish command socket
+    time.sleep(3)
+    print("\n\nCreating socket for sending car commands...")
+    command_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    print("Socket for sending car commands created...")
 
     print("Connecting sending socket to %s:%d..." % (SENDING_HOST_IP, COMMAND_PORT))
     connected = False
@@ -64,8 +64,8 @@ def receive_video(protocol):
         # try to connect to socket, if not ready sleep and try again
         try:
             print("trying")
-            sock_send.connect((SENDING_HOST_IP, COMMAND_PORT))
-            connected = True    
+            command_sock.connect((SENDING_HOST_IP, COMMAND_PORT))
+            connected = True
         except:
             time.sleep(1)
     print("Connected sending socket to %s:%d..\n\n." % (SENDING_HOST_IP, COMMAND_PORT))
@@ -75,7 +75,9 @@ def receive_video(protocol):
 
     # size of struct L
     payload_size = struct.calcsize("<L")
-    print(payload_size)
+
+    # start car
+    command_sock.send('start'.encode('utf-8'))
 
     # continue to receive video till interrupt
     while True:
@@ -114,7 +116,7 @@ def receive_video(protocol):
 
         # TODO: Process objects, if found send stop command back to Pi
         if detect_stop_sign(frame):
-            send_sock.send('stop'.encode('utf-8'))
+            command_sock.send('stop'.encode('utf-8'))
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
@@ -126,5 +128,3 @@ if __name__ == '__main__':
         receive_video(protocol)
     else:
         print("Error: Invalid argument")
-
-
