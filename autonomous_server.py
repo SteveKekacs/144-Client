@@ -59,13 +59,11 @@ def receive_video(protocol):
     print("Socket for sending car commands created...")
 
     print("Connecting sending socket to %s:%d..." % (SENDING_HOST_IP, COMMAND_PORT))
-    connected = False
-    while not connected:
+    while True:
         # try to connect to socket, if not ready sleep and try again
         try:
-            print("trying")
             command_sock.connect((SENDING_HOST_IP, COMMAND_PORT))
-            connected = True
+            break
         except:
             time.sleep(1)
     print("Connected sending socket to %s:%d..\n\n." % (SENDING_HOST_IP, COMMAND_PORT))
@@ -128,3 +126,4 @@ if __name__ == '__main__':
         receive_video(protocol)
     else:
         print("Error: Invalid argument")
+
