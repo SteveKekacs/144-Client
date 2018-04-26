@@ -117,10 +117,8 @@ def receive_video(protocol):
 
         # TODO: Process objects, if found send stop command back to Pi
         if ss_classifier.detect_stopsign(frame):
-            print("Send stop command")
-            # command_sock.send('stop'.encode('utf-8'))
-            print("DONE")
-            # break
+            command_sock.send('stop'.encode('utf-8'))
+            break
 
         # show frame
         cv2.imshow('frame',frame)
@@ -129,6 +127,8 @@ def receive_video(protocol):
             break
 
     # close sockets
+    sock.close()
+    command_sock.close()
 
 
 if __name__ == '__main__':
