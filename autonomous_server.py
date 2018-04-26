@@ -10,6 +10,7 @@ import struct
 import socket
 import random
 import time
+from detection.stopsign_detection import StopSignClassifier
 
 HOST_IP=''
 SENDING_HOST_IP='10.251.45.1'
@@ -68,6 +69,11 @@ def receive_video(protocol):
             time.sleep(1)
     print("Connected sending socket to %s:%d..\n\n." % (SENDING_HOST_IP, COMMAND_PORT))
 
+    # initialize stop sign detection
+    print("Initializing stopsign detection classifier...")
+    ss_classifier = StopSignClassifier()
+    print("Stop Sign detection ready...")
+
     # variable to hold data sent from Pi
     data = b''
 
@@ -109,15 +115,20 @@ def receive_video(protocol):
         # convert to cv2 frame
         frame = pickle.loads(frame_data)
 
+        # TODO: Process objects, if found send stop command back to Pi
+        if ss_classifier.detect_stopsign(frame):
+            print("Send stop command")
+            # command_sock.send('stop'.encode('utf-8'))
+            print("DONE")
+            # break
+
         # show frame
         cv2.imshow('frame',frame)
 
-        # TODO: Process objects, if found send stop command back to Pi
-        if detect_stop_sign(frame):
-            command_sock.send('stop'.encode('utf-8'))
-
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
+
+    # close sockets
 
 
 if __name__ == '__main__':
