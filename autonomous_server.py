@@ -15,10 +15,10 @@ from detection.stopsign_detection import StopSignClassifier
 HOST_IP=''
 SENDING_HOST_IP='10.251.45.1'
 VIDEO_PORT=8088
-COMMAND_PORT=8989
+COMMAND_PORT=8998
 
-# size of packets to receive
-PACKET_SZ = 130748 * 2
+# size of each opencv frame
+MSG_SZ = 230563
 
 
 def detect_stop_sign(frame):
@@ -33,8 +33,10 @@ def receive_video(protocol):
     # create socket
     # get socket type based on protocol
     socket_type = socket.SOCK_STREAM
+    PACKET_SZ = MSG_SZ
     if protocol == 'UDP':
         socket_type = socket.SOCK_DGRAM
+        PACKET_SZ = int(MSG_SZ / 4) + 1
 
     print("Creating %s socket..." % protocol)
     sock = socket.socket(socket.AF_INET, socket_type)
@@ -85,46 +87,39 @@ def receive_video(protocol):
 
     # continue to receive video till interrupt
     while True:
-        # receive data till payload size reached
-        while len(data) < payload_size:
-            data += conn.recv(PACKET_SZ)
-
-        # get payload size from data
-        packed_msg_size = data[:payload_size]
-
-        # remove received data
-        data = data[payload_size:]
-
-        # get message size
-        msg_size = struct.unpack("<L", packed_msg_size)[0]
-
+        frame_data = []
         # ceive data till message size met
-        while len(data) < msg_size:
-            if protocol == 'TCP':
+        if protocol == 'TCP':
+            while len(data) < MSG_SZ:
                 data += conn.recv(PACKET_SZ)
-            else:
-                packet_data, addr = sock.recvfrom(PACKET_SZ)
-                data += packed_data
 
-        # get frame data
-        frame_data = data[:msg_size]
+            # get frame data
+            frame_data = data[:MSG_SZ]
 
-        # remove received frame data
-        data = data[msg_size:]
+            # remove received frame data
+            data = data[MSG_SZ:]
+        else:
+            packet_data, addr = sock.recvfrom(76800)
+            data += packet_data
+            if len(data) >= MSG_SZ:
+                frame_data = data[:MSG_SZ]
+                data = data[MSG_SZ:]
 
-        # convert to cv2 frame
-        frame = pickle.loads(frame_data)
+        if frame_data:
+            # convert to cv2 frame
+            frame = pickle.loads(frame_data)
+            frame = frame.reshape(240,320,3)
 
-        # TODO: Process objects, if found send stop command back to Pi
-        if ss_classifier.detect_stopsign(frame):
-            command_sock.send('stop'.encode('utf-8'))
-            break
+            # send stop command if stopsign detected
+            if ss_classifier.detect_stopsign(frame):
+                command_sock.send('stop'.encode('utf-8'))
+                break
 
-        # show frame
-        cv2.imshow('frame',frame)
+            # show frame
+            cv2.imshow('frame',frame)
 
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
 
     # close sockets
     sock.close()
