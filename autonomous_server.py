@@ -20,14 +20,6 @@ COMMAND_PORT=8995
 MSG_SZ = 230563
 
 
-def detect_stop_sign(frame):
-    # temp
-    ret = random.randint(0, 50) == 10
-    if ret:
-        print("STOP!")
-    return ret
-
-
 def receive_video(protocol):
     # create socket
     # get socket type based on protocol
@@ -70,12 +62,12 @@ def receive_video(protocol):
             break
         except:
             time.sleep(1)
-    print("Connected sending socket to %s:%d..\n\n." % (SENDING_HOST_IP, COMMAND_PORT))
+    print("Connected sending socket to %s:%d...\n\n" % (SENDING_HOST_IP, COMMAND_PORT))
 
     # initialize stop sign detection
     print("Initializing stopsign detection classifier...")
     ss_classifier = StopSignClassifier()
-    print("Stop Sign detection ready...")
+    print("Stop Sign detection ready...\n\n")
 
     # variable to hold data sent from Pi
     data = b''
@@ -83,8 +75,8 @@ def receive_video(protocol):
     # size of struct L
     payload_size = struct.calcsize("<L")
 
-    # start car
-    command_sock.send('start'.encode('utf-8'))
+    # keep track of number of frames to know when to start car
+    num_frame = 0
 
     # continue to receive video till interrupt
     while True:
@@ -117,6 +109,7 @@ def receive_video(protocol):
 
         # send stop command if stopsign detected
         if ss_classifier.detect_stopsign(frame):
+            print("Stopping car...")
             command_sock.send('stop'.encode('utf-8'))
             break
 
@@ -125,6 +118,12 @@ def receive_video(protocol):
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
+
+        num_frame += 1
+        if num_frame == 10:
+            print("Starting car...")
+            # start car
+            command_sock.send('start'.encode('utf-8'))
 
     # close sockets
     sock.close()
