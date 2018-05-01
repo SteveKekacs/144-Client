@@ -118,7 +118,7 @@ def receive_video(protocol):
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
-        print("GOT ONE:", num_frame)
+        print(num_frame)
         if num_frame == 10:
             print("Starting car...")
             # start car
