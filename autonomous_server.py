@@ -14,10 +14,10 @@ from detection.stopsign_detection import StopSignClassifier
 
 HOST_IP=''
 SENDING_HOST_IP='10.251.45.1'
-VIDEO_PORT=8088
-COMMAND_PORT=8995
+VIDEO_PORT=8018
+COMMAND_PORT=8019
 
-MSG_SZ = 230563
+MSG_SZ = 230400
 
 
 def receive_video(protocol):
@@ -29,7 +29,7 @@ def receive_video(protocol):
     # for UDP change socket type and pckt size
     if protocol == 'UDP':
         socket_type = socket.SOCK_DGRAM
-        PACKET_SZ = 57642
+        PACKET_SZ = 11521
 
     print("Creating %s socket..." % protocol)
     sock = socket.socket(socket.AF_INET, socket_type)
@@ -72,16 +72,12 @@ def receive_video(protocol):
     # variable to hold data sent from Pi
     data = b''
 
-    # size of struct L
-    payload_size = struct.calcsize("<L")
-
     # keep track of number of frames to know when to start car
     num_frame = 0
 
     # continue to receive video till interrupt
     while True:
-        frame_data = []
-        # ceive data till message size met
+        # receive data till message size met
         if protocol == 'TCP':
             while len(data) < MSG_SZ:
                 data += conn.recv(PACKET_SZ)
@@ -93,33 +89,36 @@ def receive_video(protocol):
             data = data[MSG_SZ:]
         else:
             frame_data = b''
-            num_packet = 0
             while len(frame_data) < MSG_SZ:
                 packet_data, addr = sock.recvfrom(PACKET_SZ)
-                if packet_data[:5] == b'BEGIN':
-                    frame_data = packet_data[5:]
+                if packet_data[:20] == (b'!' * 20):
+                    frame_data = packet_data[20:]
                 else:
                     frame_data += packet_data
-                print(packet_data[:5], len(frame_data))
-
-            print("done", len(frame_data), MSG_SZ)
 
         # convert to cv2 frame
-        frame = pickle.loads(frame_data)
+        try:
+            frame = np.fromstring(frame_data, dtype=np.uint8)
+            frame = frame.reshape(240, 320, 3)
+        except:
+            continue 
 
-        # send stop command if stopsign detected
-        if ss_classifier.detect_stopsign(frame):
-            print("Stopping car...")
-            command_sock.send('stop'.encode('utf-8'))
-            break
+        # increase frame count
+        num_frame += 1
 
         # show frame
         cv2.imshow('frame',frame)
 
+        # send stop command if stopsign detected
+        if num_frame > 10 and ss_classifier.detect_stopsign(frame):
+            print("Stopping car...")
+            command_sock.send('stop'.encode('utf-8'))
+            break
+
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
-        num_frame += 1
+        print("GOT ONE:", num_frame)
         if num_frame == 10:
             print("Starting car...")
             # start car
