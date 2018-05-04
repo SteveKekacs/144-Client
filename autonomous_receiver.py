@@ -1,22 +1,22 @@
 """
 Receives opencv frames from Rasperry Pi Sender
-to process for object detection.
+to process for object detection and sends car commands back.
 """
 import sys
 import cv2
-import pickle
 import numpy as np
-import struct
 import socket
-import random
 import time
 from detection.stopsign_detection import StopSignClassifier
 
-HOST_IP=''
-SENDING_HOST_IP='10.251.45.1'
+# IP address of Raspberry Pi 
+RPI_IP='10.251.45.1'
+
+# ports to use for transmitting video and receiving commands
 VIDEO_PORT=8018
 COMMAND_PORT=8019
 
+# size of each msg (frame)
 MSG_SZ = 230400
 
 
@@ -37,7 +37,7 @@ def receive_video(protocol):
 
     # bind to host
     print("Binding to port %d..." % VIDEO_PORT)
-    sock.bind((HOST_IP, VIDEO_PORT))
+    sock.bind(('', VIDEO_PORT))
 
     # if TCP listen and accept connection
     conn = None
@@ -49,20 +49,22 @@ def receive_video(protocol):
         print("Established connection with %s..." % addr)
 
     # sleep then establish command socket
-    time.sleep(3)
+    time.sleep(1)
     print("\n\nCreating socket for sending car commands...")
     command_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     print("Socket for sending car commands created...")
 
-    print("Connecting sending socket to %s:%d..." % (SENDING_HOST_IP, COMMAND_PORT))
+    print("Connecting sending socket to %s:%d..." % (RPI_IP, COMMAND_PORT))
     while True:
         # try to connect to socket, if not ready sleep and try again
         try:
-            command_sock.connect((SENDING_HOST_IP, COMMAND_PORT))
+            command_sock.connect((RPI_IP, COMMAND_PORT))
             break
         except:
+            print("Connection failed, retrying...")
             time.sleep(1)
-    print("Connected sending socket to %s:%d...\n\n" % (SENDING_HOST_IP, COMMAND_PORT))
+
+    print("Connected sending socket to %s:%d...\n\n" % (RPI_IP, COMMAND_PORT))
 
     # initialize stop sign detection
     print("Initializing stopsign detection classifier...")
@@ -118,10 +120,10 @@ def receive_video(protocol):
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
-        print(num_frame)
+        # start car after 10 frames have been received
         if num_frame == 10:
             print("Starting car...")
-            # start car
+            # send start car command
             command_sock.send('start'.encode('utf-8'))
 
     # close sockets
@@ -129,8 +131,9 @@ def receive_video(protocol):
     command_sock.close()
 
 
+# check protocol arg, then call receive_video
 if __name__ == '__main__':
-    if len(sys.argv) == 2 and sys.argv[1] in ['tcp', 'udp', 'rdp']:
+    if len(sys.argv) == 2 and sys.argv[1] in ['tcp', 'udp']:
         protocol = sys.argv[1].upper()
         receive_video(protocol)
     else:

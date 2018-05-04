@@ -1,14 +1,13 @@
-import time
-
 import cv2
-import imutils
-import numpy as np
+
 
 class StopSignClassifier:
     def __init__(self, *args, **kwargs):
+        # on init load classifier
         self.load_classifier()
 
     def load_classifier(self):
+        # loads classifier from pre-trained classifier file (must use absolute path)
         self.classifier = cv2.CascadeClassifier("/Users/stevenkekacs/144-Client/detection/stopsign_classifier.xml")
 
     def detect_stopsign(self, img):
@@ -20,16 +19,22 @@ class StopSignClassifier:
         # Detect any stop signs in the image using the classifier at various scales.
         stop_signs = self.classifier.detectMultiScale(gray, 1.02, 10)
 
-        # Draw a rectangle around each detected sign and display it.
-        for (x, y, w, h) in stop_signs:
+        # if stop signs found, draw rectange, calc area and return True
+        if stop_signs.any():
+            # get position and dimensions
+            x, y, w, h = stop_signs[0]
+
+            # draw rectangle around stop sign
             cv2.rectangle(img, (x, y), (x+w , y+h), (255, 0, 0), 2)
 
-            # calculate area of stop sign, if greater than cutoff
-            # return True
+            # calculate area of stop sign
             stopsign_area = w * h
-            print(stopsign_area)
+            print("Stopsign found:", stopsign_area)
+
+            # return True for stopsign found
             return True
 
+        # no stop sign found so return False
         return False
 
 
