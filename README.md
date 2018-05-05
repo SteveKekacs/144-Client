@@ -6,4 +6,4 @@ There are three important files:
 2. `detection/stopsign_detection.py`: Defines a simple `StopSignClassifier` class that loads a pre-trained haar stop sign classifier file (`detection/stopsign_classifier.xml`), and contains a function that given an opencv frame, attempts to detect a stop sign and returns `True` if found else `False`.
 3. `detection/stopsign_classifier.xml`: Pre-trained haar classifier for stop signs.
 
-There is also one irrelevant file (for fun) `client.py`, that allows you to manually drive the mobile RC car from ane external server.
+There is also one irrelevant file (for fun) `client.py`, that allows you to manually drive the mobile RC car from any external server.
